@@ -1,12 +1,23 @@
 import { Environment, OrbitControls } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import { Physics, RigidBody } from '@react-three/rapier';
-import { forwardRef, ForwardRefRenderFunction, useImperativeHandle } from 'react';
+import { forwardRef, ForwardRefRenderFunction, useImperativeHandle, useRef } from 'react';
+import { MathUtils, Vector3 } from 'three';
 import Ball from './Ball';
-import { ENVIRONMENT_MAP_URL, PRIZE_POSITIONS } from './scene/constants';
+import {
+    ENVIRONMENT_MAP_URL,
+    PRIZE_POSITIONS,
+    REVEAL_FRONT_CAMERA_POSITION,
+    REVEAL_FRONT_CAMERA_TARGET,
+} from './scene/constants';
 import RewardReveal3D from './scene/RewardReveal3D';
 import { useClawMachineController } from './scene/useClawMachineController';
 import { useSceneAssets } from './scene/useSceneAssets';
 import { CapturedReward, RevealingReward, SceneHandle } from '../types/game';
+
+const desiredCameraPosition = new Vector3(...REVEAL_FRONT_CAMERA_POSITION);
+const desiredCameraTarget = new Vector3(...REVEAL_FRONT_CAMERA_TARGET);
+const nextTarget = new Vector3();
 
 const Scene: ForwardRefRenderFunction<
     SceneHandle,
@@ -19,6 +30,7 @@ const Scene: ForwardRefRenderFunction<
     }
 > = ({ onRewardCollected, revealingReward, revealStage, controlsEnabled, onRevealBallClick }, ref) => {
     const { floor, clawMachine, clawRest, clawRest1, clawRest2, clawRest3, claw1, claw2, claw3, balls, ballScenesByColor } = useSceneAssets();
+    const orbitControlsRef = useRef<any>(null);
     const {
         clawRestRef,
         clawRest1Ref,
@@ -37,6 +49,17 @@ const Scene: ForwardRefRenderFunction<
     } = useClawMachineController(onRewardCollected);
 
     useImperativeHandle(ref, () => ({ onPick, onJoystick, getRewardBallPosition, consumeReward }));
+
+    useFrame(({ camera }, delta) => {
+        if (!revealStage || controlsEnabled || !orbitControlsRef.current) {
+            return;
+        }
+
+        camera.position.lerp(desiredCameraPosition, MathUtils.clamp(delta * 1.75, 0, 1));
+        nextTarget.copy(orbitControlsRef.current.target).lerp(desiredCameraTarget, MathUtils.clamp(delta * 2.2, 0, 1));
+        orbitControlsRef.current.target.copy(nextTarget);
+        orbitControlsRef.current.update();
+    });
 
     return (
         <>
@@ -85,7 +108,7 @@ const Scene: ForwardRefRenderFunction<
                 ballScenesByColor={ballScenesByColor}
                 onBallClick={onRevealBallClick}
             />
-            <OrbitControls {...orbitControlsProps} enabled={controlsEnabled} />
+            <OrbitControls ref={orbitControlsRef} {...orbitControlsProps} enabled={controlsEnabled} />
         </>
     )
 }

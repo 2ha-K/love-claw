@@ -1,6 +1,6 @@
 import { Float, PresentationControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Group, MathUtils, Mesh, Quaternion, Vector3 } from 'three';
 import { RevealingReward, RewardColorKey } from '../../types/game';
 import { REVEAL_PULL_DURATION } from './constants';
@@ -31,10 +31,13 @@ const RewardReveal3D = ({
     const flashRef = useRef<Group>(null);
     const cardAnchorRef = useRef<Group>(null);
     const cardMeshRef = useRef<Mesh>(null);
+    const ballPresentationRef = useRef<Group>(null);
     const pullProgressRef = useRef(0);
+    const [isBallAutoRotating, setIsBallAutoRotating] = useState(true);
 
     useEffect(() => {
         pullProgressRef.current = 0;
+        setIsBallAutoRotating(true);
     }, [reward?.id, stage]);
 
     const floatingCardAccent = useMemo(() => {
@@ -52,20 +55,28 @@ const RewardReveal3D = ({
 
         targetPosition
             .copy(camera.position)
-            .add(cameraForward.clone().multiplyScalar(1.45))
-            .add(cameraUp.clone().multiplyScalar(-0.08));
+            .add(cameraForward.clone().multiplyScalar(1.18))
+            .add(cameraUp.clone().multiplyScalar(-0.02));
 
         targetQuaternion.copy(camera.quaternion);
 
         if (stage === 'ball' && revealBallRef.current) {
             pullProgressRef.current = Math.min(pullProgressRef.current + delta / REVEAL_PULL_DURATION, 1);
-            const eased = 1 - (1 - pullProgressRef.current) ** 3;
+            const eased = MathUtils.smoothstep(pullProgressRef.current, 0, 1);
 
             startPosition.fromArray(reward.startPosition);
             revealBallRef.current.position.copy(startPosition.lerp(targetPosition, eased));
-            revealBallRef.current.scale.setScalar(MathUtils.lerp(1, 1.7, eased));
-            revealBallRef.current.quaternion.slerp(targetQuaternion, delta * 6);
-            revealBallRef.current.rotateY(delta * 1.2);
+            revealBallRef.current.scale.setScalar(MathUtils.lerp(1, 2.45, eased));
+            revealBallRef.current.quaternion.slerp(targetQuaternion, delta * 3);
+
+            if (ballPresentationRef.current && isBallAutoRotating) {
+                ballPresentationRef.current.rotation.y += delta * 0.95;
+                ballPresentationRef.current.rotation.x = MathUtils.lerp(
+                    ballPresentationRef.current.rotation.x,
+                    0.18,
+                    delta * 2.4,
+                );
+            }
         }
 
         if (stage === 'flash' && flashRef.current) {
@@ -97,13 +108,27 @@ const RewardReveal3D = ({
     return (
         <>
             {stage === 'ball' && (
-                <group ref={revealBallRef} onClick={onBallClick}>
+                <group ref={revealBallRef}>
                     <pointLight intensity={18} color={reward.accent} distance={5} />
-                    <PrizeBallVisual object={ballScenesByColor[reward.colorKey]} position={[0, 0, 0]} scale={1} />
-                    <mesh>
-                        <sphereGeometry args={[0.28, 32, 32]} />
-                        <meshBasicMaterial color={reward.accent} transparent opacity={0.14} />
-                    </mesh>
+                    <PresentationControls
+                        global={false}
+                        polar={[-0.45, 0.45]}
+                        azimuth={[-1.1, 1.1]}
+                        config={{ mass: 2.2, tension: 260 }}
+                        snap={false}
+                    >
+                        <group
+                            ref={ballPresentationRef}
+                            onPointerDown={() => setIsBallAutoRotating(false)}
+                            onClick={onBallClick}
+                        >
+                            <PrizeBallVisual object={ballScenesByColor[reward.colorKey]} position={[0, 0, 0]} scale={1} />
+                            <mesh>
+                                <sphereGeometry args={[0.34, 32, 32]} />
+                                <meshBasicMaterial color={reward.accent} transparent opacity={0.16} />
+                            </mesh>
+                        </group>
+                    </PresentationControls>
                 </group>
             )}
 

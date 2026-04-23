@@ -19,8 +19,10 @@ export const CARRIED_BALL_Y_OFFSET = 3.05;
 export const PICK_DELAY_MS = 200;
 export const MAX_ALIGNMENT_DISTANCE = 0.42;
 export const GUARANTEE_READY_CHARGE = 9;
-export const REVEAL_PULL_DURATION = 0.52;
+export const REVEAL_PULL_DURATION = 1.35;
 export const REVEAL_FLASH_DURATION_MS = 560;
+export const REVEAL_FRONT_CAMERA_POSITION = [0, 2.72, 3.08] as [number, number, number];
+export const REVEAL_FRONT_CAMERA_TARGET = [0, 2.18, 0.1] as [number, number, number];
 export const REWARD_DROP_ZONE = {
     minX: -0.9,
     maxX: -0.14,
