@@ -1,5 +1,6 @@
 import { BallCollider, RigidBody } from '@react-three/rapier';
 import { forwardRef, ForwardRefRenderFunction, useEffect, useMemo, useState } from 'react';
+import { BALL_COLLIDER_RADIUS } from './scene/constants';
 
 interface Props {
     obj: any;
@@ -16,7 +17,7 @@ const Ball: ForwardRefRenderFunction<any, Props> = ({ obj, position }, ref) => {
 
     return (
         <RigidBody ref={ref} position={position}>
-            <BallCollider args={[0.155]} />
+            <BallCollider args={[BALL_COLLIDER_RADIUS]} />
             {showObj && (
                 <primitive object={clonedObj} />
             )}
