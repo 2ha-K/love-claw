@@ -1,4 +1,5 @@
 import { useGLTF } from '@react-three/drei';
+import { RewardColorKey } from '../../types/game';
 import { MODEL_PATHS } from './constants';
 
 export const useSceneAssets = () => {
@@ -28,6 +29,13 @@ export const useSceneAssets = () => {
         claw2,
         claw3,
         balls: [blueBall, greenBall, pinkBall, redBall, yellowBall],
+        ballScenesByColor: {
+            blue: blueBall.scene,
+            green: greenBall.scene,
+            pink: pinkBall.scene,
+            red: redBall.scene,
+            yellow: yellowBall.scene,
+        } satisfies Record<RewardColorKey, object>,
     };
 };
 

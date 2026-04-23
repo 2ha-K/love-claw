@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber';
-import { createRef, useCallback, useMemo, useRef, useState } from 'react';
+import { createRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Vector3 } from 'three';
 import {
     angleToRadian,
@@ -16,9 +16,13 @@ import {
     CLAMPED_CLAW_X,
     CLAMPED_CLAW_Z,
     JOYSTICK_MOVEMENT_SPEED,
+    MAX_ALIGNMENT_DISTANCE,
     PICK_DELAY_MS,
     PICK_TARGET_Y,
+    REWARD_DROP_ZONE,
+    REWARD_VARIANTS,
 } from './constants';
+import { CapturedReward, RevealingReward } from '../../types/game';
 
 interface AnimationState {
     position: [number, number, number];
@@ -52,8 +56,11 @@ interface UseClawMachineControllerResult {
     claw2Ref: React.MutableRefObject<any>;
     claw3Ref: React.MutableRefObject<any>;
     ballRefs: React.MutableRefObject<React.RefObject<any>[]>;
+    activeBalls: boolean[];
     onJoystick: (x: number, z: number) => void;
-    onPick: () => void;
+    onPick: (options?: { guaranteed?: boolean }) => boolean;
+    getRewardBallPosition: (ballIndex: number) => [number, number, number] | null;
+    consumeReward: (ballIndex: number) => RevealingReward | null;
     orbitControlsProps: {
         minAzimuthAngle: number;
         maxAzimuthAngle: number;
@@ -66,7 +73,25 @@ interface UseClawMachineControllerResult {
     };
 }
 
-export const useClawMachineController = (): UseClawMachineControllerResult => {
+const getCatchChance = (distance: number) => {
+    if (distance <= 0.16) {
+        return 0.92;
+    }
+
+    if (distance <= 0.25) {
+        return 0.76;
+    }
+
+    if (distance <= 0.33) {
+        return 0.56;
+    }
+
+    return 0.34;
+};
+
+export const useClawMachineController = (
+    onRewardCollected?: (reward: CapturedReward) => void,
+): UseClawMachineControllerResult => {
     const clawRestRef = useRef<any>();
     const clawRest1Ref = useRef<any>();
     const clawRest2Ref = useRef<any>();
@@ -79,7 +104,23 @@ export const useClawMachineController = (): UseClawMachineControllerResult => {
     const animationQueueRef = useRef<AnimationQueueItem[]>([]);
     const selectedIndexRef = useRef<number | null>(null);
     const animationStateMapRef = useRef<Record<string, AnimationState>>({});
+    const currentPickGuaranteeRef = useRef(false);
+    const pendingRewardRef = useRef<CapturedReward | null>(null);
+    const fallingRewardsRef = useRef<Map<number, CapturedReward>>(new Map());
+    const storedRewardsRef = useRef<Map<number, CapturedReward>>(new Map());
+    const onRewardCollectedRef = useRef(onRewardCollected);
+    const rewardSequenceRef = useRef(0);
+    const activeBallsRef = useRef<boolean[]>(Array.from({ length: BALL_COUNT }, () => true));
     const [isPicking, setIsPicking] = useState(false);
+    const [activeBalls, setActiveBalls] = useState<boolean[]>(() => Array.from({ length: BALL_COUNT }, () => true));
+
+    useEffect(() => {
+        activeBallsRef.current = activeBalls;
+    }, [activeBalls]);
+
+    useEffect(() => {
+        onRewardCollectedRef.current = onRewardCollected;
+    }, [onRewardCollected]);
 
     const onJoystick = useCallback((x: number, z: number) => {
         joystickRef.current.x = x;
@@ -92,6 +133,10 @@ export const useClawMachineController = (): UseClawMachineControllerResult => {
 
         const distances = ballRefs.current
             .map((ballRef, index) => {
+                if (!activeBallsRef.current[index] || fallingRewardsRef.current.has(index) || storedRewardsRef.current.has(index)) {
+                    return null;
+                }
+
                 const translation = ballRef.current?.translation();
 
                 if (!translation) {
@@ -110,11 +155,32 @@ export const useClawMachineController = (): UseClawMachineControllerResult => {
             .filter(Boolean)
             .sort((left, right) => left!.distance - right!.distance);
 
-        if (!distances.length) {
+        const nearestBall = distances[0];
+
+        if (!nearestBall || nearestBall.distance > MAX_ALIGNMENT_DISTANCE) {
             return;
         }
 
-        selectedIndexRef.current = distances[0]!.index;
+        const variant = REWARD_VARIANTS[nearestBall.index % REWARD_VARIANTS.length];
+        const caught = currentPickGuaranteeRef.current || Math.random() < getCatchChance(nearestBall.distance);
+
+        if (!caught) {
+            pendingRewardRef.current = null;
+            selectedIndexRef.current = null;
+            return;
+        }
+
+        selectedIndexRef.current = nearestBall.index;
+        rewardSequenceRef.current += 1;
+        pendingRewardRef.current = {
+            id: `reward-${rewardSequenceRef.current}-${nearestBall.index}`,
+            ballIndex: nearestBall.index,
+            sequence: rewardSequenceRef.current,
+            colorKey: variant.colorKey,
+            label: variant.label,
+            accent: variant.accent,
+            glow: variant.glow,
+        };
         ballRefs.current[selectedIndexRef.current].current?.setGravityScale(0);
     }, []);
 
@@ -123,8 +189,20 @@ export const useClawMachineController = (): UseClawMachineControllerResult => {
             return;
         }
 
-        ballRefs.current[selectedIndexRef.current].current?.setGravityScale(1);
+        const selectedIndex = selectedIndexRef.current;
+        const reward = pendingRewardRef.current;
+
+        if (reward) {
+            const selectedBall = ballRefs.current[selectedIndex].current;
+            selectedBall?.setLinvel({ x: 0, y: 0, z: 0 });
+            selectedBall?.setGravityScale(1);
+            fallingRewardsRef.current.set(selectedIndex, reward);
+        } else {
+            ballRefs.current[selectedIndex].current?.setGravityScale(1);
+        }
+
         selectedIndexRef.current = null;
+        pendingRewardRef.current = null;
     }, []);
 
     const spreadClawAnimation = useMemo<AnimationStep[]>(() => {
@@ -192,13 +270,15 @@ export const useClawMachineController = (): UseClawMachineControllerResult => {
         ];
     }, [catchBall, playNextAnimation]);
 
-    const onPick = useCallback(() => {
-        if (isPicking) {
-            return;
+    const onPick = useCallback((options?: { guaranteed?: boolean }) => {
+        if (isPicking || !activeBallsRef.current.some(Boolean)) {
+            return false;
         }
 
+        currentPickGuaranteeRef.current = Boolean(options?.guaranteed);
         setIsPicking(true);
         animationQueueRef.current.push({ animationSet: catchAnimationSet, startTime: 0, isPlaying: false });
+        return true;
     }, [catchAnimationSet, isPicking]);
 
     useFrame(({ clock }) => {
@@ -227,6 +307,31 @@ export const useClawMachineController = (): UseClawMachineControllerResult => {
                 ),
             );
         }
+
+        fallingRewardsRef.current.forEach((reward, index) => {
+            const translation = ballRefs.current[index].current?.translation();
+
+            if (!translation) {
+                return;
+            }
+
+            const hasReachedDropZone =
+                translation.x >= REWARD_DROP_ZONE.minX &&
+                translation.x <= REWARD_DROP_ZONE.maxX &&
+                translation.y >= REWARD_DROP_ZONE.minY &&
+                translation.y <= REWARD_DROP_ZONE.maxY &&
+                translation.z >= REWARD_DROP_ZONE.minZ &&
+                translation.z <= REWARD_DROP_ZONE.maxZ;
+
+            if (!hasReachedDropZone) {
+                return;
+            }
+
+            ballRefs.current[index].current?.setLinvel({ x: 0, y: 0, z: 0 });
+            storedRewardsRef.current.set(index, reward);
+            onRewardCollectedRef.current?.(reward);
+            fallingRewardsRef.current.delete(index);
+        });
 
         animationQueueRef.current = animationQueueRef.current
             .filter((item) => item.animationSet.length > 0)
@@ -292,6 +397,35 @@ export const useClawMachineController = (): UseClawMachineControllerResult => {
             });
     });
 
+    const getRewardBallPosition = useCallback((ballIndex: number) => {
+        const translation = ballRefs.current[ballIndex]?.current?.translation();
+
+        if (!translation) {
+            return null;
+        }
+
+        return [translation.x, translation.y, translation.z] as [number, number, number];
+    }, []);
+
+    const consumeReward = useCallback((ballIndex: number) => {
+        const reward = storedRewardsRef.current.get(ballIndex);
+        const translation = ballRefs.current[ballIndex]?.current?.translation();
+
+        if (!reward || !translation) {
+            return null;
+        }
+
+        storedRewardsRef.current.delete(ballIndex);
+        setActiveBalls((previous) => previous.map((isActive, index) => (
+            index === ballIndex ? false : isActive
+        )));
+
+        return {
+            ...reward,
+            startPosition: [translation.x, translation.y, translation.z] as [number, number, number],
+        };
+    }, []);
+
     return {
         clawRestRef,
         clawRest1Ref,
@@ -301,8 +435,11 @@ export const useClawMachineController = (): UseClawMachineControllerResult => {
         claw2Ref,
         claw3Ref,
         ballRefs,
+        activeBalls,
         onJoystick,
         onPick,
+        getRewardBallPosition,
+        consumeReward,
         orbitControlsProps: {
             minAzimuthAngle: angleToRadian(-10),
             maxAzimuthAngle: angleToRadian(10),

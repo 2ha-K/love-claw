@@ -3,14 +3,22 @@ import { Physics, RigidBody } from '@react-three/rapier';
 import { forwardRef, ForwardRefRenderFunction, useImperativeHandle } from 'react';
 import Ball from './Ball';
 import { ENVIRONMENT_MAP_URL, PRIZE_POSITIONS } from './scene/constants';
+import RewardReveal3D from './scene/RewardReveal3D';
 import { useClawMachineController } from './scene/useClawMachineController';
 import { useSceneAssets } from './scene/useSceneAssets';
+import { CapturedReward, RevealingReward, SceneHandle } from '../types/game';
 
 const Scene: ForwardRefRenderFunction<
-    any,
-    object
-> = (_, ref) => {
-    const { floor, clawMachine, clawRest, clawRest1, clawRest2, clawRest3, claw1, claw2, claw3, balls } = useSceneAssets();
+    SceneHandle,
+    {
+        onRewardCollected?: (reward: CapturedReward) => void;
+        revealingReward: RevealingReward | null;
+        revealStage: 'ball' | 'flash' | 'card' | null;
+        controlsEnabled: boolean;
+        onRevealBallClick: () => void;
+    }
+> = ({ onRewardCollected, revealingReward, revealStage, controlsEnabled, onRevealBallClick }, ref) => {
+    const { floor, clawMachine, clawRest, clawRest1, clawRest2, clawRest3, claw1, claw2, claw3, balls, ballScenesByColor } = useSceneAssets();
     const {
         clawRestRef,
         clawRest1Ref,
@@ -20,12 +28,15 @@ const Scene: ForwardRefRenderFunction<
         claw2Ref,
         claw3Ref,
         ballRefs,
+        activeBalls,
         onJoystick,
         onPick,
+        getRewardBallPosition,
+        consumeReward,
         orbitControlsProps,
-    } = useClawMachineController();
+    } = useClawMachineController(onRewardCollected);
 
-    useImperativeHandle(ref, () => ({ onPick, onJoystick }));
+    useImperativeHandle(ref, () => ({ onPick, onJoystick, getRewardBallPosition, consumeReward }));
 
     return (
         <>
@@ -56,13 +67,25 @@ const Scene: ForwardRefRenderFunction<
             </group>
             <Physics>
                 {PRIZE_POSITIONS.map((position, index) => (
-                    <Ball key={index} ref={ballRefs.current[index]} obj={balls[index % balls.length].scene} position={position} />
+                    <Ball
+                        key={index}
+                        ref={ballRefs.current[index]}
+                        obj={balls[index % balls.length].scene}
+                        position={position}
+                        isActive={activeBalls[index]}
+                    />
                 ))}
                 <RigidBody ccd type="fixed" colliders="trimesh">
                     <primitive object={clawMachine.scene} castShadow />
                 </RigidBody>
             </Physics >
-            <OrbitControls {...orbitControlsProps} />
+            <RewardReveal3D
+                reward={revealingReward}
+                stage={revealStage}
+                ballScenesByColor={ballScenesByColor}
+                onBallClick={onRevealBallClick}
+            />
+            <OrbitControls {...orbitControlsProps} enabled={controlsEnabled} />
         </>
     )
 }
