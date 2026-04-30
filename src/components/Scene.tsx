@@ -1,11 +1,10 @@
-import { Environment, OrbitControls } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { Physics, RigidBody } from '@react-three/rapier';
 import { forwardRef, ForwardRefRenderFunction, useImperativeHandle, useRef } from 'react';
 import { MathUtils, Vector3 } from 'three';
 import Ball from './Ball';
 import {
-    ENVIRONMENT_MAP_URL,
     PRIZE_POSITIONS,
     REVEAL_FRONT_CAMERA_POSITION,
     REVEAL_FRONT_CAMERA_TARGET,
@@ -63,8 +62,9 @@ const Scene: ForwardRefRenderFunction<
 
     return (
         <>
-            <Environment files={ENVIRONMENT_MAP_URL} />
             <ambientLight intensity={2} />
+            <hemisphereLight args={['#ffffff', '#ffd8bd', 1.4]} />
+            <directionalLight position={[3, 6, 4]} intensity={4.5} castShadow />
             <pointLight position={[-2, 5, 8]} intensity={50} castShadow />
             <primitive object={floor.scene} receiveShadow position={[0, -0.25, 0]} />
             <group ref={clawRestRef}>

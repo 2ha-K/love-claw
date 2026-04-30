@@ -1,6 +1,6 @@
 import { useFrame } from '@react-three/fiber';
 import { createRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Vector3 } from 'three';
+import { TOUCH, Vector3 } from 'three';
 import {
     angleToRadian,
     clonePosition,
@@ -70,6 +70,16 @@ interface UseClawMachineControllerResult {
         maxDistance: number;
         target: [number, number, number];
         enablePan: boolean;
+        enableZoom: boolean;
+        enableDamping: boolean;
+        dampingFactor: number;
+        rotateSpeed: number;
+        zoomSpeed: number;
+        screenSpacePanning: boolean;
+        touches: {
+            ONE: number;
+            TWO: number;
+        };
     };
 }
 
@@ -178,6 +188,7 @@ export const useClawMachineController = (
             sequence: rewardSequenceRef.current,
             colorKey: variant.colorKey,
             label: variant.label,
+            message: variant.message,
             accent: variant.accent,
             glow: variant.glow,
         };
@@ -441,14 +452,24 @@ export const useClawMachineController = (
         getRewardBallPosition,
         consumeReward,
         orbitControlsProps: {
-            minAzimuthAngle: angleToRadian(-10),
-            maxAzimuthAngle: angleToRadian(10),
-            minPolarAngle: angleToRadian(65),
-            maxPolarAngle: angleToRadian(85),
-            minDistance: 2.5,
-            maxDistance: 5.5,
+            minAzimuthAngle: angleToRadian(-24),
+            maxAzimuthAngle: angleToRadian(24),
+            minPolarAngle: angleToRadian(58),
+            maxPolarAngle: angleToRadian(88),
+            minDistance: 2.25,
+            maxDistance: 5.85,
             target: [0.0, 2.4, 0.0],
             enablePan: false,
+            enableZoom: true,
+            enableDamping: true,
+            dampingFactor: 0.08,
+            rotateSpeed: 0.62,
+            zoomSpeed: 0.78,
+            screenSpacePanning: false,
+            touches: {
+                ONE: TOUCH.ROTATE,
+                TWO: TOUCH.DOLLY_ROTATE,
+            },
         },
     };
 };

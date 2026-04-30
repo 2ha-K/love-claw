@@ -9,10 +9,18 @@ const ButtonsControl: FC<{
     isPityReady: boolean;
 }> = ({ onOpen, onPick, isOpenDisabled, isPickDisabled, isPityReady }) => {
     return (
-        <Flex position='absolute' zIndex={10} right={{ base: '16px', lg: '64px' }} bottom={{ base: '16px', lg: '64px' }} gap={{ base: '8px', lg: '16px' }}>
+        <Flex
+            position='absolute'
+            zIndex={10}
+            right={{ base: '12px', sm: '16px', lg: '64px' }}
+            bottom={{ base: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', lg: '64px' }}
+            gap={{ base: '8px', lg: '16px' }}
+            align='center'
+            sx={{ touchAction: 'manipulation' }}
+        >
             <Button
-                w='92px'
-                h='92px'
+                w={{ base: '72px', sm: '78px', md: '86px', lg: '92px' }}
+                h={{ base: '72px', sm: '78px', md: '86px', lg: '92px' }}
                 rounded='full'
                 onClick={onOpen}
                 isDisabled={isOpenDisabled}
@@ -22,13 +30,15 @@ const ButtonsControl: FC<{
                 _disabled={{ opacity: 0.55, filter: 'saturate(0.7)' }}
                 boxShadow='0 18px 38px rgba(13, 7, 15, 0.28)'
                 fontFamily={`"Baskerville", "Palatino Linotype", serif`}
+                fontSize={{ base: '14px', md: '16px' }}
                 lineHeight='1.1'
+                sx={{ WebkitTapHighlightColor: 'transparent' }}
             >
                 Open
             </Button>
             <Button
-                w='92px'
-                h='92px'
+                w={{ base: '72px', sm: '78px', md: '86px', lg: '92px' }}
+                h={{ base: '72px', sm: '78px', md: '86px', lg: '92px' }}
                 rounded='full'
                 onClick={onPick}
                 isDisabled={isPickDisabled}
@@ -42,7 +52,9 @@ const ButtonsControl: FC<{
                     ? '0 0 24px rgba(255, 216, 122, 0.66), 0 18px 38px rgba(13, 7, 15, 0.28)'
                     : '0 18px 38px rgba(13, 7, 15, 0.28)'}
                 fontFamily={`"Baskerville", "Palatino Linotype", serif`}
+                fontSize={{ base: '14px', md: '16px' }}
                 lineHeight='1.1'
+                sx={{ WebkitTapHighlightColor: 'transparent' }}
             >
                 Pick
             </Button>

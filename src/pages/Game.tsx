@@ -6,6 +6,7 @@ import ButtonsControl from '../components/ButtonsControl';
 import GameStatusHud from '../components/GameStatusHud';
 import JoystickControl from '../components/JoystickControl';
 import ProgressBar from '../components/ProgressBar';
+import RewardLetterCard from '../components/RewardLetterCard';
 import Scene from '../components/Scene';
 import { GUARANTEE_READY_CHARGE, REVEAL_FLASH_DURATION_MS } from '../components/scene/constants';
 import { CapturedReward, RevealingReward, SceneHandle } from '../types/game';
@@ -123,7 +124,7 @@ const Game = () => {
     }, [handleRevealCard, revealStage]);
 
     return (
-        <Box position='relative' w='100vw' h='100vh'>
+        <Box position='relative' w='100vw' h='100svh' overflow='hidden' overscrollBehavior='none'>
             <GameStatusHud pityProgress={pityProgress} isPityReady={isPityReady} />
             <Modal isOpen={isLoading} onClose={() => { }}>
                 <ModalOverlay bg='linear-gradient(135deg, #6f00ff, #00ffcc)' />
@@ -131,20 +132,27 @@ const Game = () => {
                     <ProgressBar progress={Math.round(progress)} />
                 </ModalContent>
             </Modal>
-            <JoystickControl onJoystick={(x, z) => ref.current?.onJoystick(x, z)} />
-            <ButtonsControl
-                onOpen={handleOpen}
-                onPick={handlePick}
-                isOpenDisabled={isRevealActive}
-                isPickDisabled={isRevealActive}
-                isPityReady={isPityReady}
-            />
+            {!isRevealActive && (
+                <>
+                    <JoystickControl onJoystick={(x, z) => ref.current?.onJoystick(x, z)} />
+                    <ButtonsControl
+                        onOpen={handleOpen}
+                        onPick={handlePick}
+                        isOpenDisabled={isRevealActive}
+                        isPickDisabled={isRevealActive}
+                        isPityReady={isPityReady}
+                    />
+                </>
+            )}
+            {revealStage === 'card' && revealingReward && (
+                <RewardLetterCard reward={revealingReward} />
+            )}
             {revealStage === 'card' && (
                 <Button
                     position='absolute'
                     zIndex={18}
                     left='50%'
-                    bottom={{ base: '132px', lg: '76px' }}
+                    bottom={{ base: 'calc(env(safe-area-inset-bottom, 0px) + 22px)', lg: '76px' }}
                     transform='translateX(-50%)'
                     onClick={handleCloseReveal}
                     rounded='full'
@@ -158,7 +166,14 @@ const Game = () => {
                     Keep The Card
                 </Button>
             )}
-            <Canvas shadows='soft'>
+            <Canvas
+                shadows='soft'
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    touchAction: 'none',
+                }}
+            >
                 <Suspense fallback={null}>
                     <Scene
                         ref={ref}

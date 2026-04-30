@@ -6,6 +6,7 @@ export interface CapturedReward {
     sequence: number;
     colorKey: RewardColorKey;
     label: string;
+    message: string;
     accent: string;
     glow: string;
 }
