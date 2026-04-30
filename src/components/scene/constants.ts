@@ -8,7 +8,7 @@ export const CLAMPED_CLAW_X = {
     max: 0.8,
 };
 
-export const JOYSTICK_MOVEMENT_SPEED = 0.0001;
+export const JOYSTICK_MOVEMENT_SPEED = 0.32;
 export const BALL_COUNT = 10;
 export const BALL_COLLIDER_RADIUS = 0.155;
 export const PICK_TARGET_Y = 2;

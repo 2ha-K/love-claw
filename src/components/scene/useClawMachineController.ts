@@ -292,15 +292,15 @@ export const useClawMachineController = (
         return true;
     }, [catchAnimationSet, isPicking]);
 
-    useFrame(({ clock }) => {
+    useFrame(({ clock }, delta) => {
         if (clawRestRef.current && clawRest1Ref.current) {
             const nextZ = Math.max(
                 CLAMPED_CLAW_Z.min,
-                Math.min(CLAMPED_CLAW_Z.max, clawRestRef.current.position.z + joystickRef.current.z * JOYSTICK_MOVEMENT_SPEED),
+                Math.min(CLAMPED_CLAW_Z.max, clawRestRef.current.position.z + joystickRef.current.z * JOYSTICK_MOVEMENT_SPEED * delta),
             );
             const nextX = Math.max(
                 CLAMPED_CLAW_X.min,
-                Math.min(CLAMPED_CLAW_X.max, clawRest1Ref.current.position.x + joystickRef.current.x * JOYSTICK_MOVEMENT_SPEED),
+                Math.min(CLAMPED_CLAW_X.max, clawRest1Ref.current.position.x + joystickRef.current.x * JOYSTICK_MOVEMENT_SPEED * delta),
             );
 
             clawRestRef.current.position.z = nextZ;

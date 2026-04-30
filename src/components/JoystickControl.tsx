@@ -27,7 +27,7 @@ const JoystickControl: FC<{
         }
 
         setJoystickPos({ x, z });
-        onJoystick(x, z);
+        onJoystick(x / limit, z / limit);
     }, [onJoystick]);
 
     const handleStart = (e: any) => {
